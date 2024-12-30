@@ -26,7 +26,7 @@ Bot 將展示動漫角色的一部分（例如眼睛、手或發型），用戶�
 ## 項目技術
 ### 主要技術棧
 - **LINE Messaging API**：實現 Bot 與用戶的交互。
-- **Python shazamio**：用於音樂識別和處理。
+- **YouTube Data API**：用於抓取YouTube Data。
 - **Firebase/Storage**：用於存儲圖檔及音樂。
 - **Vercel**：Line Bot托管平台。
 - **Flask**：作為 Web 框架，提供 Bot 的後端服務支持。
