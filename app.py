@@ -53,7 +53,7 @@ app = Flask(__name__)
 #load_dotenv()
 configuration = Configuration(access_token=os.getenv('CHANNEL_ACCESS_TOKEN'))
 line_handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
-client = db.init_firebase_storage (os.getenv("FIREBASE_CREDENTIALS"))
+client = db.init_firebase_storage ()
 game_states = {}
 
 def create_rich_menu_2():
