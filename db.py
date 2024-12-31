@@ -4,16 +4,19 @@ Created on Mon Dec 30 17:03:20 2024
 
 @author: user
 """
+
 import os
 import logging
 import base64
 import json
-from firebase_admin import credentials, initialize_app
-from google.cloud import storage
+from firebase_admin import credentials, initialize_app, storage
 
 firebase_app = None
 
 def init_firebase_storage():
+    """
+    初始化 Firebase Storage 並返回 Bucket 客戶端。
+    """
     global firebase_app
     if firebase_app is None:
         credentials_content = os.getenv("FIREBASE_CREDENTIALS")
@@ -25,92 +28,75 @@ def init_firebase_storage():
             decoded_credentials = base64.b64decode(credentials_content).decode("utf-8")
             credentials_info = json.loads(decoded_credentials)
             cred = credentials.Certificate(credentials_info)
-            firebase_app = initialize_app(cred)
+
+            # 初始化 Firebase Admin SDK
+            firebase_app = initialize_app(cred, {"storageBucket": "your-project-id.appspot.com"})
             logging.info("Firebase 已成功初始化。")
         except Exception as e:
             logging.error(f"初始化 Firebase 客戶端失敗：{e}")
             raise RuntimeError(f"初始化 Firebase 客戶端失敗：{e}")
     
-    # 返回 Storage 客戶端
-    return storage.Client(app=firebase_app)
-
-
-    
-        
-
-def list_blob_names(client: storage.Client, bucket_name: str, prefix: str = "") -> list:
+    # 返回 Storage Bucket 客戶端
     try:
-        # Get bucket and list blobs
-        bucket = client.bucket(bucket_name)
+        bucket = storage.bucket()
+        return bucket
+    except Exception as e:
+        logging.error(f"獲取 Firebase Storage Bucket 失敗：{e}")
+        raise RuntimeError(f"獲取 Firebase Storage Bucket 失敗：{e}")
+
+
+def list_blob_names(bucket, prefix: str = "") -> list:
+    """
+    列出指定 Bucket 中的所有 Blob 名稱。
+    """
+    try:
         blobs = bucket.list_blobs(prefix=prefix)
         blob_names = [blob.name for blob in blobs]
-        logging.info(f"Retrieved {len(blob_names)} blobs from bucket '{bucket_name}' with prefix '{prefix}'.")
+        logging.info(f"從 Bucket 中檢索到 {len(blob_names)} 個 Blob，前綴為 '{prefix}'。")
         return blob_names
     except Exception as e:
-        logging.error(f"Failed to list blobs: {e}")
-        raise RuntimeError(f"Failed to list blobs: {e}")
+        logging.error(f"列出 Blobs 失敗：{e}")
+        raise RuntimeError(f"列出 Blobs 失敗：{e}")
 
-def get_signed_url(client: storage.Client, bucket_name: str, blob_name: str, expiration: int = 3600) -> str:
+
+def get_signed_url(bucket, blob_name: str, expiration: int = 3600) -> str:
+    """
+    為指定的 Blob 生成簽名 URL。
+    """
     try:
-        # Get bucket and blob
-        bucket = client.bucket(bucket_name)
         blob = bucket.blob(blob_name)
-
-        # Generate signed URL
         url = blob.generate_signed_url(version="v4", expiration=expiration, method="GET")
-        logging.info("Signed URL generated successfully.")
+        logging.info(f"成功為 Blob '{blob_name}' 生成簽名 URL。")
         return url
     except Exception as e:
-        logging.error(f"Failed to generate signed URL: {e}")
-        raise RuntimeError(f"Failed to generate signed URL: {e}")
-        
-        
-def generate_signed_urls(client: storage.Client, bucket_name: str, blob_names: list, expiration: int = 3600) -> dict:
+        logging.error(f"生成簽名 URL 失敗：{e}")
+        raise RuntimeError(f"生成簽名 URL 失敗：{e}")
+
+
+def generate_signed_urls(bucket, blob_names: list, expiration: int = 3600) -> dict:
     """
-    為指定檔案名稱生成簽名 URL 並映射其名稱。
-
-    Args:
-        client (storage.Client): GCS 客戶端。
-        bucket_name (str): 存儲桶名稱。
-        blob_names (list): 檔案名稱列表。
-        expiration (int): 簽名 URL 過期時間，單位為秒，預設 3600 秒。
-
-    Returns:
-        dict: 包含有效檔案名稱與其對應簽名 URL 的字典。
-
-    Raises:
-        RuntimeError: 如果生成簽名 URL 失敗。
+    為指定的 Blob 名稱列表生成簽名 URL。
     """
     try:
         signed_urls_map = {}
         for blob_name in blob_names:
-            # 提取名稱部分作為鍵 (去掉資料夾與副檔名)
             base_name = blob_name.split('/')[-1].rsplit('.', 1)[0]
             
-            # 如果名稱為空或無效，跳過該項
             if not base_name:
-                logging.warning(f"Blob {blob_name} has an empty or invalid name. Skipping.")
+                logging.warning(f"Blob {blob_name} 名稱為空或無效，跳過。")
                 continue
             
-            # 獲取簽名 URL
-            signed_url = get_signed_url(client, bucket_name, blob_name, expiration)
-            if not signed_url:
-                logging.warning(f"Signed URL for blob {blob_name} is empty. Skipping.")
-                continue
-            
-            # 如果名稱包含 "-", 只保留去掉前綴的部分
-            if '-' in base_name:
-                refined_name = base_name.split('-', 1)[-1]
-                signed_urls_map[refined_name] = signed_url
-            else:
-                signed_urls_map[base_name] = signed_url
+            try:
+                signed_url = get_signed_url(bucket, blob_name, expiration)
+                if '-' in base_name:
+                    refined_name = base_name.split('-', 1)[-1]
+                    signed_urls_map[refined_name] = signed_url
+                else:
+                    signed_urls_map[base_name] = signed_url
+            except Exception as e:
+                logging.warning(f"生成 {blob_name} 的簽名 URL 失敗，跳過。原因：{e}")
         
         return signed_urls_map
     except Exception as e:
-        logging.error(f"Failed to generate signed URLs: {e}")
-        raise RuntimeError(f"Failed to generate signed URLs: {e}")
-
-
-
-
-  
+        logging.error(f"批量生成簽名 URL 失敗：{e}")
+        raise RuntimeError(f"批量生成簽名 URL 失敗：{e}")

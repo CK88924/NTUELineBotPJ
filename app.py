@@ -53,7 +53,6 @@ app = Flask(__name__)
 #load_dotenv()
 configuration = Configuration(access_token=os.getenv('CHANNEL_ACCESS_TOKEN'))
 line_handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
-client = db.init_firebase_storage ()
 game_states = {}
 
 def create_rich_menu_2():
@@ -304,7 +303,7 @@ def handle_text_message(event):
         )
 
 
-#處理Postback事件
+# 處理 Postback 事件
 @line_handler.add(PostbackEvent)
 def handle_postback(event):
     data = event.postback.data
@@ -313,6 +312,7 @@ def handle_postback(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
 
+        # 如果用戶已在遊戲中
         if user_id in game_states:
             replys = [TextMessage(text="您已經在遊戲中，請完成當前遊戲後再開始新遊戲！")]
             line_bot_api.reply_message(
@@ -323,73 +323,94 @@ def handle_postback(event):
             )
             return
 
+        # 獲取存儲桶名稱
         bucket_name = os.getenv("BUCKET_NAME")
 
+        # 處理 Drama 的 Postback
         if data == 'Drama':
-            blob_names = db.list_blob_names(client, bucket_name, "劇名圖片/")
-            signed_urls_map = db.generate_signed_urls(client, bucket_name, blob_names)
-            if not signed_urls_map:
-                replys = [TextMessage(text="目前沒有可用的圖片，請稍後再試！")]
-                line_bot_api.reply_message(
-                    ReplyMessageRequest(
-                        reply_token=event.reply_token,
-                        messages=replys
-                    )
-                )
-                return
-
-            correct_answer, url = rand.choice(list(signed_urls_map.items()))
-            game_states[user_id] = {
-                "game": "Drama",
-                "attempts": 0,
-                "answer": correct_answer
-            }
-            replys = [
-                ImageMessage(original_content_url=url, preview_image_url=url),
-                TextMessage(text="請猜測圖片是哪部劇？(並將其打在訊息框)")
-            ]
-
-        elif data == 'Role':
-            blob_names = db.list_blob_names(client, bucket_name, "角色圖片/")
-            signed_urls_map = db.generate_signed_urls(client, bucket_name, blob_names)
-            if not signed_urls_map:
-                replys = [TextMessage(text="目前沒有可用的圖片，請稍後再試！")]
-                line_bot_api.reply_message(
-                    ReplyMessageRequest(
-                        reply_token=event.reply_token,
-                        messages=replys
-                    )
-                )
-                return
-
-            correct_answer, url = rand.choice(list(signed_urls_map.items()))
-            game_states[user_id] = {
-                "game": "Role",
-                "attempts": 0,
-                "answer": correct_answer
-            }
-            replys = [
-                ImageMessage(original_content_url=url, preview_image_url=url),
-                TextMessage(text="請猜測圖片是哪個角色？(並將其打在訊息框)")
-            ]
-
+            handle_drama_postback(event, line_bot_api, bucket_name)
+        # 處理 Top 的 Postback
         elif data == 'Top':
-            game_states[user_id] = {
-                "game": "Top",
-                "status": "waiting_for_keyword"
-            }
-            replys = [TextMessage(text="請輸入想搜尋的影音關鍵詞，我將幫您查詢 YouTube 當年度的熱門影片！")]
-
+            handle_top_postback(event, line_bot_api, user_id)
+        # 未知的 Postback
         else:
             logging.error(f"Unknown postback data: {data}")
+            replys = [TextMessage(text="未知的請求類型，請稍後再試！")]
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
+            )
+
+# 處理 Drama Postback 的邏輯
+def handle_drama_postback(event, line_bot_api, bucket_name):
+    try:
+        # 獲取 Firebase Storage Bucket
+        bucket = db.init_firebase_storage()
+
+        # 列出 Blob 名稱
+        blob_names = db.list_blob_names(bucket, "劇名圖片/")
+        if not blob_names:
+            logging.warning("存儲桶中沒有匹配的 Blob 名稱。")
+            replys = [TextMessage(text="目前沒有可用的圖片，請稍後再試！")]
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
+            )
             return
 
+        # 生成簽名 URL
+        signed_urls_map = db.generate_signed_urls(bucket, blob_names)
+        if not signed_urls_map:
+            logging.warning("生成的簽名 URL 為空。")
+            replys = [TextMessage(text="目前沒有可用的圖片，請稍後再試！")]
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
+            )
+            return
+
+        # 處理 signed_urls_map，例如發送圖片
+        logging.info(f"成功生成 {len(signed_urls_map)} 個簽名 URL。")
+        image_url = list(signed_urls_map.values())[0]
+        replys = [ImageMessage(original_content_url=image_url, preview_image_url=image_url)]
         line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=replys
             )
         )
+
+    except Exception as e:
+        logging.error(f"處理 'Drama' 請求失敗：{e}")
+        replys = [TextMessage(text="發生錯誤，請稍後再試！")]
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=replys
+            )
+        )
+
+# 處理 Top Postback 的邏輯
+def handle_top_postback(event, line_bot_api, user_id):
+    # 記錄遊戲狀態
+    game_states[user_id] = {
+        "game": "Top",
+        "status": "waiting_for_keyword"
+    }
+    replys = [TextMessage(text="請輸入想搜尋的影音關鍵詞，我將幫您查詢 YouTube 當年度的熱門影片！")]
+    line_bot_api.reply_message(
+        ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=replys
+        )
+    )
+
 
 
 
