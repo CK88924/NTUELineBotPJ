@@ -43,11 +43,10 @@ from linebot.v3.webhooks import (
 app = Flask(__name__)
 
 # Load environment variables
-load_dotenv()
+#load_dotenv()
 configuration = Configuration(access_token=os.getenv('CHANNEL_ACCESS_TOKEN'))
 line_handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 game_states = {}
-BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 # Rich menu creation
 def create_rich_menu():
@@ -124,9 +123,10 @@ def handle_game_logic(user_message, game_state, user_id, chance):
 
 
 def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_text):
+    bucket = db.init_firebase_storage()
     try:
-        blob_names = db.list_blob_names(BUCKET_NAME, prefix)
-        signed_urls_map = db.generate_signed_urls(BUCKET_NAME, blob_names)
+        blob_names = db.list_blob_names(bucket, prefix)
+        signed_urls_map = db.generate_signed_urls(bucket, blob_names)
         if not signed_urls_map:
             replys = [TextMessage(text="目前沒有可用的圖片，請稍後再試！")]
             line_bot_api.reply_message(
