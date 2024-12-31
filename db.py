@@ -11,7 +11,6 @@ import base64
 import json
 from firebase_admin import credentials, initialize_app, storage
 
-firebase_app = None
 
 def init_firebase_storage():
     """
@@ -29,9 +28,14 @@ def init_firebase_storage():
             credentials_info = json.loads(decoded_credentials)
             cred = credentials.Certificate(credentials_info)
 
+            # 從環境變數獲取存儲桶名稱
+            bucket_name = os.getenv("BUCKET_NAME")
+            if not bucket_name:
+                raise ValueError("未設置 BUCKET_NAME 環境變數")
+            
             # 初始化 Firebase Admin SDK
-            firebase_app = initialize_app(cred, {"storageBucket": "your-project-id.appspot.com"})
-            logging.info("Firebase 已成功初始化。")
+            firebase_app = initialize_app(cred, {"storageBucket": bucket_name})
+            logging.info(f"Firebase 已成功初始化，存儲桶：{bucket_name}")
         except Exception as e:
             logging.error(f"初始化 Firebase 客戶端失敗：{e}")
             raise RuntimeError(f"初始化 Firebase 客戶端失敗：{e}")
@@ -43,6 +47,7 @@ def init_firebase_storage():
     except Exception as e:
         logging.error(f"獲取 Firebase Storage Bucket 失敗：{e}")
         raise RuntimeError(f"獲取 Firebase Storage Bucket 失敗：{e}")
+
 
 
 def list_blob_names(bucket, prefix: str = "") -> list:
