@@ -11,12 +11,12 @@ import base64
 import json
 from firebase_admin import credentials, initialize_app, storage
 
-
+firebase_app = None
 def init_firebase_storage():
     """
     初始化 Firebase Storage 並返回 Bucket 客戶端。
     """
-    global firebase_app
+    global firebase_app  # 確保 firebase_app 是全局變數
     if firebase_app is None:
         credentials_content = os.getenv("FIREBASE_CREDENTIALS")
         if not credentials_content:
