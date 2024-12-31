@@ -14,7 +14,6 @@ import db
 import func
 from dotenv import load_dotenv
 from flask import Flask, request, abort
-from threading import Lock
 
 from linebot.v3 import (
     WebhookHandler,
@@ -28,7 +27,11 @@ from linebot.v3.messaging import (
     MessagingApi,
     ReplyMessageRequest,
     TextMessage,
+    AudioMessage,
     ImageMessage,
+    TemplateMessage,
+    QuickReply,
+    QuickReplyItem,
     MessagingApiBlob,
 )
 from linebot.v3.webhooks import (
@@ -40,26 +43,10 @@ from linebot.v3.webhooks import (
 app = Flask(__name__)
 
 # Load environment variables
-# load_dotenv()
+#load_dotenv()
 configuration = Configuration(access_token=os.getenv('CHANNEL_ACCESS_TOKEN'))
 line_handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
-
-# Thread-safe game state management
-game_state_lock = Lock()
 game_states = {}
-
-def update_game_state(user_id, state):
-    with game_state_lock:
-        game_states[user_id] = state
-
-def get_game_state(user_id):
-    with game_state_lock:
-        return game_states.get(user_id)
-
-def delete_game_state(user_id):
-    with game_state_lock:
-        if user_id in game_states:
-            del game_states[user_id]
 
 # Rich menu creation
 def create_rich_menu():
@@ -67,6 +54,7 @@ def create_rich_menu():
         line_bot_api = MessagingApi(api_client)
         line_bot_blob_api = MessagingApiBlob(api_client)
 
+        # Create rich menu
         headers = {
             'Authorization': 'Bearer ' + os.getenv('CHANNEL_ACCESS_TOKEN'),
             'Content-Type': 'application/json'
@@ -96,6 +84,7 @@ def create_rich_menu():
         response = response.json()
         rich_menu_id = response["richMenuId"]
 
+        # Upload rich menu image
         with open('static/richmenu.jpg', 'rb') as image:
             line_bot_blob_api.set_rich_menu_image(
                 rich_menu_id=rich_menu_id,
@@ -107,23 +96,31 @@ def create_rich_menu():
 
 create_rich_menu()
 
-# Game logic
-def handle_game_logic(user_message, game_state, user_id, chance):
-    correct_answer = game_state["answer"]
-    attempts = game_state["attempts"]
+# Helper functions
+def get_game_state(user_id):
+    return game_states.get(user_id)
 
+def handle_game_logic(user_message, game_state, user_id, chance):
+    correct_answer = game_state["answer"]  # 正確答案
+    attempts = game_state["attempts"]  # 當前已嘗試次數
+
+    # 如果用戶回答正確
     if user_message == correct_answer:
-        delete_game_state(user_id)
+        del game_states[user_id]  # 清除該用戶的遊戲狀態
         return [TextMessage(text="恭喜答對！遊戲結束。")]
 
+    # 更新嘗試次數
     attempts += 1
     game_state["attempts"] = attempts
 
+    # 如果嘗試次數達到上限
     if attempts >= chance:
-        delete_game_state(user_id)
+        del game_states[user_id]  # 清除該用戶的遊戲狀態
         return [TextMessage(text=f"很可惜，答案是：{correct_answer}。遊戲結束！")]
 
+    # 如果回答錯誤但仍有剩餘次數
     return [TextMessage(text=f"答錯了哦！還有 {chance - attempts} 次機會，請再試試看吧！")]
+
 
 def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_text):
     bucket = db.init_firebase_storage()
@@ -141,11 +138,11 @@ def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_tex
             return
 
         correct_answer, url = rand.choice(list(signed_urls_map.items()))
-        update_game_state(event.source.user_id, {
+        game_states[event.source.user_id] = {
             "game": game_type,
             "attempts": 0,
             "answer": correct_answer
-        })
+        }
         replys = [
             ImageMessage(original_content_url=url, preview_image_url=url),
             TextMessage(text=question_text)
@@ -214,7 +211,7 @@ def handle_text_message(event):
                         [f"{i+1}. 影片標題: {result['title']}\n網址: {result['url']}" for i, result in enumerate(search_results)])
                     replys = [TextMessage(text=message_content[:2000])]
 
-                delete_game_state(user_id)
+                del game_states[user_id]
 
             except Exception as e:
                 logging.error(f"Error searching YouTube: {e}")
@@ -244,7 +241,7 @@ def handle_postback(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
 
-        if get_game_state(user_id):
+        if user_id in game_states:
             replys = [TextMessage(text="您已經在遊戲中，請完成當前遊戲後再開始新遊戲！")]
             line_bot_api.reply_message(
                 ReplyMessageRequest(
@@ -259,10 +256,10 @@ def handle_postback(event):
         elif data == 'Role':
             handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
         elif data == 'Top':
-            update_game_state(user_id, {
+            game_states[user_id] = {
                 "game": "Top",
                 "status": "waiting_for_keyword"
-            })
+            }
             replys = [TextMessage(text="請輸入想搜尋的影音關鍵詞，我將幫您查詢 YouTube 當年度的熱門影片！")]
             line_bot_api.reply_message(
                 ReplyMessageRequest(
