@@ -1,5 +1,7 @@
 # NTUELineBotPJ
  NTUELineBotPJ
+## Python Version
+3.9.19
 ## 項目目標
 
 **NTUELineBotPJ** 是一個旨在為動漫愛好者提供互動娛樂的 LINE Bot 項目，用戶可以通過與 Bot 的交互體驗以下功能：
