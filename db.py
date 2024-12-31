@@ -4,40 +4,36 @@ Created on Mon Dec 30 17:03:20 2024
 
 @author: user
 """
-#new db test
-
-from firebase_admin import credentials, initialize_app, _apps
-from google.cloud import storage
-import os 
+import os
+import logging
 import base64
 import json
-import requests
-import logging
+from firebase_admin import credentials, initialize_app
+from google.cloud import storage
+
+firebase_app = None
 
 def init_firebase_storage():
-    credentials_content = os.getenv("FIREBASE_CREDENTIALS")
-    if not credentials_content:
-        raise ValueError("未找到 FIREBASE_CREDENTIALS 環境變數")
-
-    try:
-        # 解碼憑證內容
-        decoded_credentials = base64.b64decode(credentials_content).decode("utf-8")
-        credentials_info = json.loads(decoded_credentials)
-
-        # 檢查 Firebase 是否已經初始化
-        if not _apps:
-            # 使用內存中的憑證初始化 Firebase
+    global firebase_app
+    if firebase_app is None:
+        credentials_content = os.getenv("FIREBASE_CREDENTIALS")
+        if not credentials_content:
+            raise ValueError("未找到 FIREBASE_CREDENTIALS 環境變數")
+        
+        try:
+            # 解碼憑證內容
+            decoded_credentials = base64.b64decode(credentials_content).decode("utf-8")
+            credentials_info = json.loads(decoded_credentials)
             cred = credentials.Certificate(credentials_info)
-            initialize_app(cred)
-            logging.info("Firebase 已成功初始化，無需寫入檔案。")
-        else:
-            logging.info("Firebase 已經初始化過。")
+            firebase_app = initialize_app(cred)
+            logging.info("Firebase 已成功初始化。")
+        except Exception as e:
+            logging.error(f"初始化 Firebase 客戶端失敗：{e}")
+            raise RuntimeError(f"初始化 Firebase 客戶端失敗：{e}")
+    
+    # 返回 Storage 客戶端
+    return storage.Client(app=firebase_app)
 
-        # 返回 Storage 客戶端
-        return storage.Client(credentials=credentials_info)
-    except Exception as e:
-        logging.error(f"初始化 Firebase Storage 客戶端失敗：{e}")
-        raise RuntimeError(f"初始化 Firebase Storage 客戶端失敗：{e}")
 
     
         
