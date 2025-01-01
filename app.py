@@ -327,15 +327,15 @@ def handle_postback(event):
             )
         
         elif data == 'Game':
-            scissors_icon = request.url_root + 'static//rps//scissors.png'
+            scissors_icon = request.url_root + 'static/rps/scissors.png'
             if scissors_icon.startswith("http:"):
                 scissors_icon = scissors_icon.replace("http", "https")
             
-            rock_icon = request.url_root + 'static//rps//rock.png'
+            rock_icon = request.url_root + 'static/rps/rock.png'
             if rock_icon.startswith("http:"):
                 rock_icon = rock_icon.replace("http", "https")
             
-            paper_icon = request.url_root + 'static//rps//paper.png'
+            paper_icon = request.url_root + 'static/rps/paper.png'
             if paper_icon.startswith("http:"):
                 paper_icon = paper_icon.replace("http", "https")
             
