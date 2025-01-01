@@ -262,13 +262,14 @@ def handle_text_message(event):
                     
                     TextMessage(text=result)
                 ]
-                del game_states[user_id]
+               
                 line_bot_api.reply_message(
                     ReplyMessageRequest(
                         reply_token=event.reply_token,
                         messages=replys
                     )
-                )
+                ) 
+                del game_states[user_id]
                 return
             else:
                 replys = [TextMessage(text="請從快速回覆中選擇剪刀、石頭或布。")]
@@ -327,7 +328,7 @@ def handle_postback(event):
             game_states[user_id] = {
                 "game": "Rps"
             }
-            
+            base_url = request.url_root
             replys = [
                 TextMessage(
                     text="剪刀石頭布遊戲開始！請選擇：",
@@ -338,20 +339,22 @@ def handle_postback(event):
                                     label="剪刀",
                                     text="剪刀"
                                 ),
+                                image_url=get_secure_url(base_url, "static/rps/scissors.png")
+
                             ),
                             QuickReplyItem(
                                 action=MessageAction(
                                     label="石頭",
                                     text="石頭"
                                 ),
-                               
-
+                                image_url=get_secure_url(base_url, "static/rps/rock.png")
                             ),
                             QuickReplyItem(
                                 action=MessageAction(
                                     label="布",
                                     text="布"
-                                ),
+                                ), 
+                                image_url=get_secure_url(base_url, "static/rps/paper.png")
                                
 
                             )
@@ -362,12 +365,13 @@ def handle_postback(event):
         else:
             logging.error(f"Unknown postback data: {data}")
             replys = [TextMessage(text="未知的請求類型，請稍後再試！")]
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=replys
-                )
+        
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=replys
             )
+        )
 
 if __name__ == "__main__":
     logging.basicConfig(
