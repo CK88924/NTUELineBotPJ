@@ -9,7 +9,7 @@ import datetime
 
 def search_youtube_this_year(api_key, query, max_results=10):
     # 定義今年的時間範圍
-    current_year = datetime.datetime.now().year
+    current_year = datetime.datetime.now().year-1 #原本 current_year = datetime.datetime.now().year(調整原因今年剛開始還沒有結果)
     start_date = f"{current_year}-01-01T00:00:00Z"  # 今年的開始時間
     end_date = f"{current_year}-12-31T23:59:59Z"    # 今年的結束時間
 
