@@ -109,18 +109,9 @@ def generate_signed_urls(bucket, blob_names: list, expiration: int = 3600) -> di
         
 
 def get_signed_url_music(bucket, blob_name: str, expiration: int = 3600) -> str:
-    """
-    為指定的 Blob 生成簽名 URL，處理特殊字符。
-    
-    :param bucket: Firebase Storage Bucket
-    :param blob_name: Blob 名稱
-    :param expiration: 簽名 URL 的有效時間（秒）
-    :return: 簽名 URL
-    """
     try:
-        # URL 編碼 Blob 名稱
-        encoded_blob_name = urllib.parse.quote(blob_name, safe='')
-        blob = bucket.blob(encoded_blob_name)
+        # 確保 `blob_name` 不經過編碼傳遞給 `bucket.blob`
+        blob = bucket.blob(blob_name)
         
         # 生成簽名 URL
         url = blob.generate_signed_url(version="v4", expiration=expiration, method="GET")

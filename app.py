@@ -353,7 +353,6 @@ def handle_text_message(event):
 
 @line_handler.add(PostbackEvent)
 def handle_postback(event):
-    replys = []
     data = event.postback.data
     user_id = event.source.user_id
 
