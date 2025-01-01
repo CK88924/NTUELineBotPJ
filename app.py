@@ -190,7 +190,7 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
             "answer": correct_answer
         }
         replys = [
-            AudioMessage(original_content_url=url, duration=10000),
+            AudioMessage(original_content_url=url, duration=func.get_audio_duration_with_mutagen(url)),
             TextMessage(text=question_text)
         ]
         line_bot_api.reply_message(
@@ -357,13 +357,13 @@ def handle_postback(event):
                 "attempts": 0
             }
             handle_image_guess_game(event, line_bot_api, "劇名圖片/", "Drama", "請猜測圖片是哪部劇？(並將其打在訊息框)")
-        elif data == 'Role':
+        if data == 'Role':
             game_states[user_id] = {
                 "game": "Role",
                 "attempts": 0
             }
             handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
-        elif data == 'Top':
+        if data == 'Top':
             game_states[user_id] = {
                 "game": "Top",
                 "status": "waiting_for_keyword"
@@ -375,7 +375,7 @@ def handle_postback(event):
                     messages=replys
                 )
             )
-        elif data == 'Game':
+        if data == 'Game':
             game_states[user_id] = {
                 "game": "Rps"
             }
@@ -416,7 +416,8 @@ def handle_postback(event):
                     messages=replys
                 )
             )
-        elif data == 'Music':
+            
+        if data == 'Music':
             game_states[user_id] = {
                 "game": "Music",
                 "attempts": 0
