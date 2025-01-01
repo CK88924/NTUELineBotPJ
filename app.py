@@ -322,13 +322,13 @@ def handle_text_message(event):
                 )
                 return
 
-        replys = handle_game_logic(user_message, game_state, user_id, chance=3)
-        line_bot_api.reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=replys
+            replys = handle_game_logic(user_message, game_state, user_id, chance=3)
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
             )
-        )
 
 @line_handler.add(PostbackEvent)
 def handle_postback(event):
