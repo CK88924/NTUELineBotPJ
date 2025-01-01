@@ -7,6 +7,7 @@ Created on Mon Dec 30 19:02:27 2024
 import logging 
 import requests
 import datetime
+import os
 import io
 from mutagen import File
 
@@ -29,18 +30,25 @@ class RPSGame:
 
 def get_audio_duration(url):
     """
-    使用 mutagen 計算遠程音頻文件的時長（毫秒）。
-
+    使用 mutagen 計算遠程音頻文件的時長（毫秒），將文件保存到 static/temp。
+    
     :param url: 音頻文件的 URL
     :return: 時長（毫秒）
     """
+    temp_dir = "static/temp"
+    os.makedirs(temp_dir, exist_ok=True)  # 確保目錄存在
+    temp_file_path = os.path.join(temp_dir, "temp_audio_file")
+
     try:
-        # 發送 GET 請求下載音頻文件到內存
+        # 下載音頻文件到 static/temp
         response = requests.get(url, stream=True)
         response.raise_for_status()
-
-        # 使用 mutagen 解析音頻文件
-        audio = File(io.BytesIO(response.content))
+        with open(temp_file_path, "wb") as temp_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                temp_file.write(chunk)
+        
+        # 使用 mutagen 加載文件計算時長
+        audio = File(temp_file_path)
         if audio and audio.info:
             duration_seconds = audio.info.length
             duration_ms = int(duration_seconds * 1000)  # 轉換為毫秒
@@ -50,11 +58,16 @@ def get_audio_duration(url):
                 raise ValueError("計算的時長為非正數")
         else:
             raise ValueError("無法獲取音頻文件時長信息")
+    
     except requests.exceptions.RequestException as re:
         logging.error(f"HTTP 請求錯誤：{re}")
     except Exception as e:
         logging.error(f"無法計算音頻時長：{e}")
-
+    finally:
+        # 刪除臨時文件
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+    
     # 預設值，作為最後的保險
     logging.info("返回預設音頻時長：10000 毫秒")
     return 10000  # 預設為 10 秒
