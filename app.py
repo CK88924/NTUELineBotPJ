@@ -282,7 +282,7 @@ def handle_text_message(event):
                         messages=replys
                     )
                 ) 
-                del game_states[user_id]
+                #del game_states[user_id]
                 return
             else:
                 replys = [TextMessage(text="請從快速回覆中選擇剪刀、石頭或布。")]
