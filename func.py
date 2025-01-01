@@ -7,6 +7,21 @@ Created on Mon Dec 30 19:02:27 2024
 import requests
 import datetime
 
+class RPSGame:
+    RPS_MAP = {
+        "剪刀": {"beats": "布", "image_url": "static/rps/scissors.png"},
+        "石頭": {"beats": "剪刀", "image_url": "static/rps/rock.png"},
+        "布": {"beats": "石頭", "image_url": "static/rps/paper.png"}
+    }
+    @staticmethod
+    def determine_winner(user_choice, bot_choice):
+        if user_choice == bot_choice:
+            return "平手"
+        elif RPSGame.RPS_MAP[user_choice]["beats"] == bot_choice:
+            return "你贏了！"
+        else:
+            return "你輸了！"
+
 def search_youtube_this_year(api_key, query, max_results=10):
     # 定義今年的時間範圍
     current_year = datetime.datetime.now().year-1 #原本 current_year = datetime.datetime.now().year(調整原因今年剛開始還沒有結果)

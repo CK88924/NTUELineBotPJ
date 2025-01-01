@@ -30,6 +30,7 @@ from linebot.v3.messaging import (
     AudioMessage,
     ImageMessage,
     TemplateMessage,
+    MessageAction,
     QuickReply,
     QuickReplyItem,
     MessagingApiBlob,
@@ -47,6 +48,11 @@ app = Flask(__name__)
 configuration = Configuration(access_token=os.getenv('CHANNEL_ACCESS_TOKEN'))
 line_handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 game_states = {}
+RPS_MAPPING = {
+    "剪刀": "scissors",
+    "石頭": "rock",
+    "布": "paper"
+}
 
 # Rich menu creation
 def create_rich_menu():
@@ -163,6 +169,13 @@ def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_tex
             )
         )
 
+def get_secure_url(base_url, path):
+    """生成 HTTPS 安全 URL"""
+    full_url = base_url.rstrip("/") + "/" + path.lstrip("/")
+    if full_url.startswith("http:"):
+        full_url = full_url.replace("http:", "https:")
+    return full_url
+
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -224,6 +237,51 @@ def handle_text_message(event):
                 )
             )
             return
+        
+        if game_state["game"] == "Rps":
+            if user_message in ["剪刀", "石頭", "布"]:
+                base_url = request.url_root
+                bot_choice = rand.choice(["剪刀", "石頭", "布"])
+                result = func.RPSGame.determine_winner(user_message, bot_choice)
+                user_image_name = RPS_MAPPING[user_message]
+                bot_image_name = RPS_MAPPING[bot_choice]
+
+                replys = [
+    
+                    TextMessage(text=f"你選擇了：{user_message}"),
+                    ImageMessage(
+                        original_content_url=get_secure_url(base_url, f"static/rps/{user_image_name}.png"),
+                        preview_image_url=get_secure_url(base_url, f"static/rps/{user_image_name}.png")
+                    ),
+                    
+                    TextMessage(text=f"機器人選擇了：{bot_choice}"),
+                    ImageMessage(
+                        original_content_url=get_secure_url(base_url, f"static/rps/{bot_image_name}.png"),
+                        preview_image_url=get_secure_url(base_url, f"static/rps/{bot_image_name}.png")
+                    ),
+                    
+                    TextMessage(text=result)
+                ]
+
+                # 刪除遊戲狀態，表示遊戲結束
+                del game_states[user_id]
+
+                line_bot_api.reply_message(
+                    ReplyMessageRequest(
+                        reply_token=event.reply_token,
+                        messages=replys
+                    )
+                )
+                return
+            else:
+                replys = [TextMessage(text="請從快速回覆中選擇剪刀、石頭或布。")]
+                line_bot_api.reply_message(
+                    ReplyMessageRequest(
+                        reply_token=event.reply_token,
+                        messages=replys
+                    )
+                )
+                return
 
         replys = handle_game_logic(user_message, game_state, user_id, chance=3)
         line_bot_api.reply_message(
@@ -267,6 +325,45 @@ def handle_postback(event):
                     messages=replys
                 )
             )
+        
+        elif data == 'Game':
+            base_url = request.url_root
+            game_states[user_id] = {
+                "game": "Rps"
+            }
+            
+            replys = [
+                TextMessage(
+                    text="剪刀石頭布遊戲開始！請選擇：",
+                    quick_reply=QuickReply(
+                        items=[
+                            QuickReplyItem(
+                                action=MessageAction(
+                                    label="剪刀",
+                                    text="剪刀"
+                                ),
+                                image_url=get_secure_url(base_url, "static/rps/scissors.png")
+                            ),
+                            QuickReplyItem(
+                                action=MessageAction(
+                                    label="石頭",
+                                    text="石頭"
+                                ),
+                                image_url=get_secure_url(base_url, "static/rps/rock.png")
+
+                            ),
+                            QuickReplyItem(
+                                action=MessageAction(
+                                    label="布",
+                                    text="布"
+                                ),
+                                image_url=get_secure_url(base_url, "static/rps/paper.png")
+
+                            )
+                        ]
+                    )
+                )
+            ]
         else:
             logging.error(f"Unknown postback data: {data}")
             replys = [TextMessage(text="未知的請求類型，請稍後再試！")]
