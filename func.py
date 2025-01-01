@@ -5,6 +5,7 @@ Created on Mon Dec 30 19:02:27 2024
 @author: user
 """
 import requests
+import urllib.parse
 import datetime
 from mutagen.mp3 import MP3
 from io import BytesIO
@@ -23,21 +24,17 @@ class RPSGame:
         else:
             return "你輸了！"
         
-def calculate_audio_duration_from_firebase(blob):
-    """
-    計算 Firebase Storage 音檔的時長（毫秒）。
-    
-    :param blob: Firebase Storage Blob 對象
-    :return: 音檔時長（毫秒），或 0 如果失敗
-    """
+def download_blob_as_bytes(bucket, blob_name):
+    encoded_blob_name = urllib.parse.quote(blob_name, safe='')
+    blob = bucket.blob(encoded_blob_name)
+    return blob.download_as_bytes()
+
+def calculate_audio_duration_from_firebase(bucket, blob_name):
     try:
-        # 將 Blob 內容下載為字節流
-        audio_stream = BytesIO(blob.download_as_bytes())
-        
-        # 使用 mutagen 計算時長
-        audio = MP3(audio_stream)
-        duration_ms = int(audio.info.length * 1000)  # 秒轉毫秒
-        return duration_ms
+        audio_bytes = download_blob_as_bytes(bucket, blob_name)
+        file_stream = BytesIO(audio_bytes)
+        audio = MP3(file_stream)
+        return int(audio.info.length * 1000)  # 秒轉毫秒
     except Exception as e:
         print(f"Error calculating audio duration: {e}")
         return 0

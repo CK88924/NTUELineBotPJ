@@ -129,6 +129,7 @@ def handle_game_logic(user_message, game_state, user_id, chance):
 
 
 def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_text):
+    replys = []
     bucket = db.init_firebase_storage()
     try:
         blob_names = db.list_blob_names(bucket, prefix)
@@ -170,11 +171,12 @@ def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_tex
         )
         
 def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_text):
+    replys = []
     bucket = db.init_firebase_storage()
     try:
         # 獲取音樂檔案列表
         blob_names = db.list_blob_names(bucket, prefix)
-        signed_urls_map = db.generate_signed_urls(bucket, blob_names)
+        signed_urls_map = db.generate_signed_urls_music(bucket, blob_names)(bucket, blob_names)
         if not signed_urls_map:
             replys = [TextMessage(text="目前沒有可用的音樂檔案，請稍後再試！")]
             line_bot_api.reply_message(
@@ -254,6 +256,7 @@ def callback():
 
 @line_handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
+    replys = []
     user_message = event.message.text.strip()
     user_id = event.source.user_id
     logging.info(f"Received message: {user_message} from user: {user_id}")
@@ -353,6 +356,7 @@ def handle_text_message(event):
 
 @line_handler.add(PostbackEvent)
 def handle_postback(event):
+    replys = []
     data = event.postback.data
     user_id = event.source.user_id
 
