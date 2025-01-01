@@ -44,7 +44,6 @@ from linebot.v3.webhooks import (
 app = Flask(__name__)
 
 # Load environment variables
-#load_dotenv()
 configuration = Configuration(access_token=os.getenv('CHANNEL_ACCESS_TOKEN'))
 line_handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 game_states = {}
@@ -252,34 +251,6 @@ def handle_text_message(event):
             )
             return
         
-
-        if game_state["game"] == "Top" and game_state["status"] == "waiting_for_keyword":
-            api_key = os.getenv("YOUTUBE_API_KEY")
-            query = user_message
-
-            try:
-                search_results = func.search_youtube_this_year(api_key, query, max_results=10)
-                if not isinstance(search_results, list) or not search_results:
-                    replys = [TextMessage(text="很抱歉，未找到相關結果！")]
-                else:
-                    message_content = "以下是搜尋結果：\n" + "\n".join(
-                        [f"{i+1}. 影片標題: {result['title']}\n網址: {result['url']}" for i, result in enumerate(search_results)])
-                    replys = [TextMessage(text=message_content[:2000])]
-
-                del game_states[user_id]
-
-            except Exception as e:
-                logging.error(f"Error searching YouTube: {e}")
-                replys = [TextMessage(text="搜尋時發生錯誤，請稍後再試！")]
-
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=replys
-                )
-            )
-            return
-        
         if game_state["game"] == "Rps":
             if user_message in ["剪刀", "石頭", "布"]:
                 base_url = request.url_root
@@ -322,6 +293,36 @@ def handle_text_message(event):
                     )
                 )
                 return
+        
+
+        if game_state["game"] == "Top" and game_state["status"] == "waiting_for_keyword":
+            api_key = os.getenv("YOUTUBE_API_KEY")
+            query = user_message
+
+            try:
+                search_results = func.search_youtube_this_year(api_key, query, max_results=10)
+                if not isinstance(search_results, list) or not search_results:
+                    replys = [TextMessage(text="很抱歉，未找到相關結果！")]
+                else:
+                    message_content = "以下是搜尋結果：\n" + "\n".join(
+                        [f"{i+1}. 影片標題: {result['title']}\n網址: {result['url']}" for i, result in enumerate(search_results)])
+                    replys = [TextMessage(text=message_content[:2000])]
+
+                del game_states[user_id]
+
+            except Exception as e:
+                logging.error(f"Error searching YouTube: {e}")
+                replys = [TextMessage(text="搜尋時發生錯誤，請稍後再試！")]
+
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
+            )
+            return
+        
+        
         else:
             replys = handle_game_logic(user_message, game_state, user_id, chance=3)
             line_bot_api.reply_message(
@@ -351,8 +352,16 @@ def handle_postback(event):
             return
 
         if data == 'Drama':
+            game_states[user_id] = {
+                "game": "Drama",
+                "attempts": 0
+            }
             handle_image_guess_game(event, line_bot_api, "劇名圖片/", "Drama", "請猜測圖片是哪部劇？(並將其打在訊息框)")
         elif data == 'Role':
+            game_states[user_id] = {
+                "game": "Role",
+                "attempts": 0
+            }
             handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
         elif data == 'Top':
             game_states[user_id] = {
@@ -408,6 +417,10 @@ def handle_postback(event):
                 )
             )
         elif data == 'Music':
+            game_states[user_id] = {
+                "game": "Music",
+                "attempts": 0
+            }
             handle_music_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測播放的音樂名稱？(並將答案打在訊息框)")
         else:
             logging.error(f"Unknown postback data: {data}")
