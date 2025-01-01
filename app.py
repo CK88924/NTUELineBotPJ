@@ -362,7 +362,7 @@ def handle_postback(event):
         elif data == 'Role':
             handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
         elif data == 'Music':
-            handle_image_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測音檔是哪首歌？(並將其打在訊息框)")
+            handle_music_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測音檔是哪首歌？(並將其打在訊息框)")
         elif data == 'Top':
             game_states[user_id] = {
                 "game": "Top",
