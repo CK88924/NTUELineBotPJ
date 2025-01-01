@@ -9,6 +9,7 @@ import os
 import logging
 import base64
 import json
+import urllib.parse
 from firebase_admin import credentials, initialize_app, storage
 
 firebase_app = None
@@ -66,41 +67,59 @@ def list_blob_names(bucket, prefix: str = "") -> list:
 
 def get_signed_url(bucket, blob_name: str, expiration: int = 3600) -> str:
     """
-    為指定的 Blob 生成簽名 URL。
+    為指定的 Blob 生成簽名 URL，處理特殊字符。
+    
+    :param bucket: Firebase Storage Bucket
+    :param blob_name: Blob 名稱
+    :param expiration: 簽名 URL 的有效時間（秒）
+    :return: 簽名 URL
     """
     try:
-        blob = bucket.blob(blob_name)
+        # URL 編碼 Blob 名稱
+        encoded_blob_name = urllib.parse.quote(blob_name, safe='')
+        blob = bucket.blob(encoded_blob_name)
+        
+        # 生成簽名 URL
         url = blob.generate_signed_url(version="v4", expiration=expiration, method="GET")
         logging.info(f"成功為 Blob '{blob_name}' 生成簽名 URL。")
         return url
     except Exception as e:
-        logging.error(f"生成簽名 URL 失敗：{e}")
-        raise RuntimeError(f"生成簽名 URL 失敗：{e}")
-
+        logging.error(f"生成簽名 URL 失敗（Blob 名稱：{blob_name}）：{e}")
+        raise RuntimeError(f"生成簽名 URL 失敗（Blob 名稱：{blob_name}）：{e}")
 
 def generate_signed_urls(bucket, blob_names: list, expiration: int = 3600) -> dict:
     """
     為指定的 Blob 名稱列表生成簽名 URL。
+    
+    :param bucket: Firebase Storage Bucket
+    :param blob_names: Blob 名稱列表
+    :param expiration: 簽名 URL 的有效時間（秒）
+    :return: 包含 Blob 名稱（精簡版）和 URL 的字典
     """
     try:
         signed_urls_map = {}
         for blob_name in blob_names:
-            base_name = blob_name.split('/')[-1].rsplit('.', 1)[0]
-            
-            if not base_name:
-                logging.warning(f"Blob {blob_name} 名稱為空或無效，跳過。")
-                continue
-            
             try:
+                # 提取文件基礎名稱（去掉路徑和擴展名）
+                base_name = blob_name.split('/')[-1].rsplit('.', 1)[0]
+                
+                if not base_name:
+                    logging.warning(f"Blob '{blob_name}' 名稱為空或無效，跳過。")
+                    continue
+
+                # 生成簽名 URL
                 signed_url = get_signed_url(bucket, blob_name, expiration)
+
+                # 如果名稱中包含 '-'，則去掉前綴
                 if '-' in base_name:
                     refined_name = base_name.split('-', 1)[-1]
                     signed_urls_map[refined_name] = signed_url
                 else:
                     signed_urls_map[base_name] = signed_url
+            
             except Exception as e:
-                logging.warning(f"生成 {blob_name} 的簽名 URL 失敗，跳過。原因：{e}")
-        
+                logging.warning(f"生成 '{blob_name}' 的簽名 URL 失敗，跳過。原因：{e}")
+
         return signed_urls_map
     except Exception as e:
         logging.error(f"批量生成簽名 URL 失敗：{e}")
