@@ -7,7 +7,6 @@ Created on Mon Dec 30 19:02:27 2024
 import logging 
 import requests
 import datetime
-import os
 import io
 from mutagen import File
 
@@ -28,31 +27,6 @@ class RPSGame:
         else:
             return "你輸了！"
 
-def get_audio_duration_with_mutagen(url: str) -> int:
-    """
-    從指定的 URL 讀取音檔 metadata 並計算時長（以毫秒為單位返回）。
-    """
-    try:
-        # 下載音檔
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
-
-        # 將音檔內容讀取到內存
-        audio_data = response.content
-
-        # 使用 mutagen 解析音檔
-        audio_file = File(io.BytesIO(audio_data))
-        if audio_file is None or not hasattr(audio_file.info, 'length'):
-            logging.warning(f"無法從 URL 解析時長：{url}")
-            return 0
-
-        # 將時長轉換為毫秒並返回整數
-        duration_in_milliseconds = int(audio_file.info.length * 1000)  # 時長轉換為毫秒
-        logging.info(f"成功計算音檔時長：{duration_in_milliseconds} 毫秒。")
-        return duration_in_milliseconds
-    except Exception as e:
-        logging.error(f"無法計算音檔時長：{e}")
-        return 0
 
 def search_youtube_this_year(api_key, query, max_results=10):
     # 定義今年的時間範圍
