@@ -28,47 +28,31 @@ class RPSGame:
         else:
             return "你輸了！"
 
-def get_audio_duration(url):
+def get_audio_duration_with_mutagen(url: str) -> int:
     """
-    使用 mutagen 計算遠程音頻文件的時長（毫秒），在本地暫存處理。
-    
-    :param url: 音頻文件的 URL
-    :return: 時長（毫秒）
+    從指定的 URL 讀取音檔 metadata 並計算時長（以毫秒為單位返回）。
     """
-    temp_file_path = "/tmp/temp_audio_file"
-    
     try:
-        # 下載音頻文件到本地臨時文件
+        # 下載音檔
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        with open(temp_file_path, "wb") as temp_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                temp_file.write(chunk)
-        
-        # 使用 mutagen 加載臨時文件計算時長
-        audio = File(temp_file_path)
-        if audio and audio.info:
-            duration_seconds = audio.info.length
-            duration_ms = int(duration_seconds * 1000)  # 轉換為毫秒
-            if duration_ms > 0:
-                return duration_ms
-            else:
-                raise ValueError("計算的時長為非正數")
-        else:
-            raise ValueError("無法獲取音頻文件時長信息")
-    
-    except requests.exceptions.RequestException as re:
-        logging.error(f"HTTP 請求錯誤：{re}")
+
+        # 將音檔內容讀取到內存
+        audio_data = response.content
+
+        # 使用 mutagen 解析音檔
+        audio_file = File(io.BytesIO(audio_data))
+        if audio_file is None or not hasattr(audio_file.info, 'length'):
+            logging.warning(f"無法從 URL 解析時長：{url}")
+            return 0
+
+        # 將時長轉換為毫秒並返回整數
+        duration_in_milliseconds = int(audio_file.info.length * 1000)  # 時長轉換為毫秒
+        logging.info(f"成功計算音檔時長：{duration_in_milliseconds} 毫秒。")
+        return duration_in_milliseconds
     except Exception as e:
-        logging.error(f"無法計算音頻時長：{e}")
-    finally:
-        # 刪除臨時文件
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-    
-    # 預設值，作為最後的保險
-    logging.info("返回預設音頻時長：10000 毫秒")
-    return 10000  # 預設為 10 秒
+        logging.error(f"無法計算音檔時長：{e}")
+        return 0
 
 def search_youtube_this_year(api_key, query, max_results=10):
     # 定義今年的時間範圍
