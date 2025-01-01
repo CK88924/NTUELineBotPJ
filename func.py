@@ -8,8 +8,12 @@ import logging
 import requests
 import datetime
 import io
-from mutagen.mp3 import MP3
+from imageio_ffmpeg import get_ffmpeg_exe
+from pydub import AudioSegment
 
+# 使用 imageio-ffmpeg 提供的 ffmpeg
+AudioSegment.ffmpeg = get_ffmpeg_exe()
+AudioSegment.ffprobe = get_ffmpeg_exe()
 
 class RPSGame:
     RPS_MAP = {
@@ -37,23 +41,19 @@ def get_audio_duration(url):
         # 發送 GET 請求下載音頻文件到內存
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        
-        # 使用 mutagen.mp3 解析音頻文件元數據
-        audio = MP3(io.BytesIO(response.content))
-        if audio and audio.info:
-            duration_seconds = audio.info.length
-            duration_ms = int(duration_seconds * 1000)  # 轉換為毫秒
-            if duration_ms > 0:
-                return duration_ms
-            else:
-                raise ValueError("計算的時長為非正數")
+
+        # 使用 pydub 解析音頻文件
+        audio = AudioSegment.from_file(io.BytesIO(response.content), format="mp3")
+        duration_ms = len(audio)  # 時長以毫秒計算
+        if duration_ms > 0:
+            return duration_ms
         else:
-            raise ValueError("無法獲取音頻文件時長信息")
+            raise ValueError("計算的時長為非正數")
     except requests.exceptions.RequestException as re:
         logging.error(f"HTTP 請求錯誤：{re}")
     except Exception as e:
         logging.error(f"無法計算音頻時長：{e}")
-    
+
     # 預設值，作為最後的保險
     logging.info("返回預設音頻時長：10000 毫秒")
     return 10000  # 預設為 10 秒
