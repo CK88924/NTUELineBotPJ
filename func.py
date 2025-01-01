@@ -6,7 +6,8 @@ Created on Mon Dec 30 19:02:27 2024
 """
 import requests
 import datetime
-
+from mutagen.mp3 import MP3
+from io import BytesIO
 class RPSGame:
     RPS_MAP = {
         "剪刀": {"beats": "布", "image_url": "static/rps/scissors.png"},
@@ -21,6 +22,25 @@ class RPSGame:
             return "你贏了！"
         else:
             return "你輸了！"
+        
+def calculate_audio_duration_from_firebase(blob):
+    """
+    計算 Firebase Storage 音檔的時長（毫秒）。
+    
+    :param blob: Firebase Storage Blob 對象
+    :return: 音檔時長（毫秒），或 0 如果失敗
+    """
+    try:
+        # 將 Blob 內容下載為字節流
+        audio_stream = BytesIO(blob.download_as_bytes())
+        
+        # 使用 mutagen 計算時長
+        audio = MP3(audio_stream)
+        duration_ms = int(audio.info.length * 1000)  # 秒轉毫秒
+        return duration_ms
+    except Exception as e:
+        print(f"Error calculating audio duration: {e}")
+        return 0
 
 def search_youtube_this_year(api_key, query, max_results=10):
     # 定義今年的時間範圍
