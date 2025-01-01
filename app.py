@@ -129,7 +129,6 @@ def handle_game_logic(user_message, game_state, user_id, chance):
 
 
 def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_text):
-    replys = []
     bucket = db.init_firebase_storage()
     try:
         blob_names = db.list_blob_names(bucket, prefix)
@@ -171,7 +170,6 @@ def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_tex
         )
         
 def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_text):
-    replys = []
     bucket = db.init_firebase_storage()
     try:
         # 獲取音樂檔案列表
@@ -256,7 +254,6 @@ def callback():
 
 @line_handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
-    replys = []
     user_message = event.message.text.strip()
     user_id = event.source.user_id
     logging.info(f"Received message: {user_message} from user: {user_id}")
@@ -378,7 +375,7 @@ def handle_postback(event):
         elif data == 'Role':
             handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
         elif data == 'Music':
-            handle_music_guess_game(event, line_bot_api, "音檔", "Music", "請猜測歌曲名？(並將其打在訊息框)")
+            handle_music_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測歌曲名？(並將其打在訊息框)")
             
         elif data == 'Top':
             game_states[user_id] = {
