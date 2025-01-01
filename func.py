@@ -42,12 +42,21 @@ def get_audio_duration(url):
         audio = MP3(io.BytesIO(response.content))
         if audio and audio.info:
             duration_seconds = audio.info.length
-            return int(duration_seconds * 1000)  # 轉換為毫秒
+            duration_ms = int(duration_seconds * 1000)  # 轉換為毫秒
+            if duration_ms > 0:
+                return duration_ms
+            else:
+                raise ValueError("計算的時長為非正數")
         else:
             raise ValueError("無法獲取音頻文件時長信息")
+    except requests.exceptions.RequestException as re:
+        logging.error(f"HTTP 請求錯誤：{re}")
     except Exception as e:
         logging.error(f"無法計算音頻時長：{e}")
-        return 10000  # 預設為 10 秒
+    
+    # 預設值，作為最後的保險
+    logging.info("返回預設音頻時長：10000 毫秒")
+    return 10000  # 預設為 10 秒
 
 
 def search_youtube_this_year(api_key, query, max_results=10):
