@@ -188,7 +188,7 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
         blob = bucket.blob(correct_answer)
 
         # 計算音檔時長
-        duration_ms = db.calculate_audio_duration_from_firebase(blob)
+        duration_ms = func.calculate_audio_duration_from_firebase(blob)
 
         if duration_ms == 0:
             replys = [TextMessage(text="無法處理該音檔，請稍後再試！")]
