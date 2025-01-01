@@ -251,6 +251,7 @@ def handle_text_message(event):
                 )
             )
             return
+        
 
         if game_state["game"] == "Top" and game_state["status"] == "waiting_for_keyword":
             api_key = os.getenv("YOUTUBE_API_KEY")
@@ -321,14 +322,15 @@ def handle_text_message(event):
                     )
                 )
                 return
-
+        else:
             replys = handle_game_logic(user_message, game_state, user_id, chance=3)
             line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=replys
-                )
+                    ReplyMessageRequest(
+                        reply_token=event.reply_token,
+                            messages=replys
+                    )
             )
+       
 
 @line_handler.add(PostbackEvent)
 def handle_postback(event):
