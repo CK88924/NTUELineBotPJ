@@ -326,19 +326,7 @@ def handle_postback(event):
                 )
             )
         
-        elif data == 'Game':
-            scissors_icon = request.url_root + 'static/rps/scissors.png'
-            if scissors_icon.startswith("http:"):
-                scissors_icon = scissors_icon.replace("http", "https")
-            
-            rock_icon = request.url_root + 'static/rps/rock.png'
-            if rock_icon.startswith("http:"):
-                rock_icon = rock_icon.replace("http", "https")
-            
-            paper_icon = request.url_root + 'static/rps/paper.png'
-            if paper_icon.startswith("http:"):
-                paper_icon = paper_icon.replace("http", "https")
-            
+        elif data == 'Game': 
             game_states[user_id] = {
                 "game": "Rps"
             }
@@ -353,14 +341,14 @@ def handle_postback(event):
                                     label="剪刀",
                                     text="剪刀"
                                 ),
-                                image_url= scissors_icon
+                                image_url= os.getenv("scissors")
                             ),
                             QuickReplyItem(
                                 action=MessageAction(
                                     label="石頭",
                                     text="石頭"
                                 ),
-                                image_url= rock_icon
+                                image_url= os.getenv("rock")
 
                             ),
                             QuickReplyItem(
@@ -368,7 +356,7 @@ def handle_postback(event):
                                     label="布",
                                     text="布"
                                 ),
-                                image_url= paper_icon
+                                image_url= os.getenv("parper")
 
                             )
                         ]
