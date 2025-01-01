@@ -189,7 +189,7 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
 
         # 隨機選擇一個音樂文件
         correct_answer, url = rand.choice(list(signed_urls_map.items()))
-        print("url:",url)
+        #print("url:",url)
         duration = func.get_audio_duration_with_mutagen(url)
         
         # 儲存遊戲狀態
@@ -342,6 +342,7 @@ def handle_text_message(event):
 
 @line_handler.add(PostbackEvent)
 def handle_postback(event):
+    replys = None
     data = event.postback.data
     user_id = event.source.user_id
 
