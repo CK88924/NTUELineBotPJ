@@ -30,24 +30,22 @@ class RPSGame:
 
 def get_audio_duration(url):
     """
-    使用 mutagen 計算遠程音頻文件的時長（毫秒），將文件保存到 static/temp。
+    使用 mutagen 計算遠程音頻文件的時長（毫秒），在本地暫存處理。
     
     :param url: 音頻文件的 URL
     :return: 時長（毫秒）
     """
-    temp_dir = "static/temp"
-    os.makedirs(temp_dir, exist_ok=True)  # 確保目錄存在
-    temp_file_path = os.path.join(temp_dir, "temp_audio_file")
-
+    temp_file_path = "/tmp/temp_audio_file"
+    
     try:
-        # 下載音頻文件到 static/temp
+        # 下載音頻文件到本地臨時文件
         response = requests.get(url, stream=True)
         response.raise_for_status()
         with open(temp_file_path, "wb") as temp_file:
             for chunk in response.iter_content(chunk_size=8192):
                 temp_file.write(chunk)
         
-        # 使用 mutagen 加載文件計算時長
+        # 使用 mutagen 加載臨時文件計算時長
         audio = File(temp_file_path)
         if audio and audio.info:
             duration_seconds = audio.info.length
@@ -71,6 +69,7 @@ def get_audio_duration(url):
     # 預設值，作為最後的保險
     logging.info("返回預設音頻時長：10000 毫秒")
     return 10000  # 預設為 10 秒
+
 def search_youtube_this_year(api_key, query, max_results=10):
     # 定義今年的時間範圍
     current_year = datetime.datetime.now().year-1 #原本 current_year = datetime.datetime.now().year(調整原因今年剛開始還沒有結果)
