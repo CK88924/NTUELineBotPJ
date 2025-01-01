@@ -3,7 +3,7 @@ line-bot-sdk==3.14.2
 requests==2.32.3
 python-dotenv==1.0.1
 pydub==0.25.1
-imageio[ffmpeg]
+zipfile
 firebase-admin==6.6.0
 google-cloud==0.34.0
 google-cloud-storage==2.19.0

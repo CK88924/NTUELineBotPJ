@@ -7,13 +7,12 @@ Created on Mon Dec 30 19:02:27 2024
 import logging 
 import requests
 import datetime
+import os
 import io
-from imageio_ffmpeg import get_ffmpeg_exe
+import zipfile
 from pydub import AudioSegment
 
-# 使用 imageio-ffmpeg 提供的 ffmpeg
-AudioSegment.ffmpeg = get_ffmpeg_exe()
-AudioSegment.ffprobe = get_ffmpeg_exe()
+
 
 class RPSGame:
     RPS_MAP = {
@@ -30,6 +29,30 @@ class RPSGame:
         else:
             return "你輸了！"
 
+
+
+def setup_ffmpeg():
+    # 動態下載 ffmpeg
+    ffmpeg_url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.zip"
+    ffmpeg_zip = "/tmp/ffmpeg.zip"
+    ffmpeg_dir = "/tmp/ffmpeg"
+
+    if not os.path.exists(ffmpeg_dir):
+        response = requests.get(ffmpeg_url, stream=True)
+        with open(ffmpeg_zip, "wb") as file:
+            for chunk in response.iter_content(chunk_size=1024):
+                file.write(chunk)
+        
+        # 解壓文件
+        with zipfile.ZipFile(ffmpeg_zip, 'r') as zip_ref:
+            zip_ref.extractall(ffmpeg_dir)
+    
+    ffmpeg_path = os.path.join(ffmpeg_dir, "bin", "ffmpeg")
+    ffprobe_path = os.path.join(ffmpeg_dir, "bin", "ffprobe")
+
+    os.environ["PATH"] += os.pathsep + os.path.dirname(ffmpeg_path)
+    return ffmpeg_path, ffprobe_path
+
 def get_audio_duration(url):
     """
     計算遠程音頻文件的時長（毫秒）。
@@ -38,19 +61,44 @@ def get_audio_duration(url):
     :return: 時長（毫秒）
     """
     try:
+        # 設置 ffmpeg 和 ffprobe
+        ffmpeg_path, ffprobe_path = setup_ffmpeg()
+        AudioSegment.ffmpeg = ffmpeg_path
+        AudioSegment.ffprobe = ffprobe_path
+
         # 發送 GET 請求下載音頻文件到內存
         response = requests.get(url, stream=True)
         response.raise_for_status()
 
+        # 嘗試自動檢測音頻格式
+        content_type = response.headers.get("Content-Type")
+        if not content_type:
+            raise ValueError("無法檢測音頻文件的 Content-Type")
+        
+        # 映射 Content-Type 到 Pydub 格式
+        format_map = {
+            "audio/mpeg": "mp3",
+            "audio/wav": "wav",
+            "audio/x-wav": "wav",
+            "audio/ogg": "ogg",
+            "audio/aac": "aac"
+        }
+        file_format = format_map.get(content_type)
+        if not file_format:
+            raise ValueError(f"不支持的音頻格式: {content_type}")
+
         # 使用 pydub 解析音頻文件
-        audio = AudioSegment.from_file(io.BytesIO(response.content), format="mp3")
+        audio = AudioSegment.from_file(io.BytesIO(response.content), format=file_format)
         duration_ms = len(audio)  # 時長以毫秒計算
+
         if duration_ms > 0:
             return duration_ms
         else:
             raise ValueError("計算的時長為非正數")
     except requests.exceptions.RequestException as re:
         logging.error(f"HTTP 請求錯誤：{re}")
+    except ValueError as ve:
+        logging.error(f"無效的音頻文件：{ve}")
     except Exception as e:
         logging.error(f"無法計算音頻時長：{e}")
 
