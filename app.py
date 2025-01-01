@@ -178,8 +178,10 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
         if not signed_urls_map:
             replys = [TextMessage(text="目前沒有可用的音樂檔案，請稍後再試！")]
             line_bot_api.reply_message(
-                event.reply_token,
-                replys
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
             )
             return
 
@@ -193,8 +195,10 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
         if duration_ms == 0:
             replys = [TextMessage(text="無法處理該音檔，請稍後再試！")]
             line_bot_api.reply_message(
-                event.reply_token,
-                replys
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
             )
             return
 
@@ -210,16 +214,20 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
             TextMessage(text=question_text)
         ]
         line_bot_api.reply_message(
-            event.reply_token,
-            replys
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=replys
+            )
         )
     
     except Exception as e:
         logging.error(f"處理 {game_type} 遊戲過程中發生錯誤：{e}")
         replys = [TextMessage(text="發生未知錯誤，請稍後再試！")]
         line_bot_api.reply_message(
-            event.reply_token,
-            replys
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=replys
+            )
         )
 
 
