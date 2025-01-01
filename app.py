@@ -168,15 +168,17 @@ def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_tex
                 messages=replys
             )
         )
-        
+
 def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_text):
     bucket = db.init_firebase_storage()
     try:
-        # 獲取音樂檔案列表
+        # 列出音樂文件名稱
         blob_names = db.list_blob_names(bucket, prefix)
-        signed_urls_map = db.generate_signed_urls_music(bucket, blob_names)(bucket, blob_names)
+        signed_urls_map = db.generate_signed_urls(bucket, blob_names)
+        
+        # 如果沒有可用音樂文件
         if not signed_urls_map:
-            replys = [TextMessage(text="目前沒有可用的音樂檔案，請稍後再試！")]
+            replys = [TextMessage(text="目前沒有可用的音樂，請稍後再試！")]
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
@@ -185,32 +187,20 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
             )
             return
 
-        # 隨機選擇一首音樂作為正確答案
+        # 隨機選擇一個音樂文件
         correct_answer, url = rand.choice(list(signed_urls_map.items()))
-        blob = bucket.blob(correct_answer)
-
-        # 計算音檔時長
-        duration_ms = func.calculate_audio_duration_from_firebase(blob)
-
-        if duration_ms == 0:
-            replys = [TextMessage(text="無法處理該音檔，請稍後再試！")]
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=replys
-                )
-            )
-            return
-
+        duration = func.get_audio_duration(url)  # 計算音樂時長
+        
+        # 儲存遊戲狀態
         game_states[event.source.user_id] = {
             "game": game_type,
             "attempts": 0,
             "answer": correct_answer
         }
 
-        # 發送音樂和問題文字
+        # 傳送音樂與問題
         replys = [
-            AudioMessage(original_content_url=url, duration=duration_ms),
+            AudioMessage(original_content_url=url, duration=duration),
             TextMessage(text=question_text)
         ]
         line_bot_api.reply_message(
@@ -219,17 +209,15 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
                 messages=replys
             )
         )
-    
     except Exception as e:
         logging.error(f"處理 {game_type} 遊戲過程中發生錯誤：{e}")
-        replys = [TextMessage(text="發生未知錯誤，請稍後再試！")]
+        replys = [TextMessage(text="發生錯誤，請稍後再試！")]
         line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=replys
             )
         )
-
 
 def get_secure_url(base_url, path):
     """生成 HTTPS 安全 URL"""
@@ -374,8 +362,7 @@ def handle_postback(event):
         elif data == 'Role':
             handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
         elif data == 'Music':
-            handle_music_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測歌曲名？(並將其打在訊息框)")
-            
+            handle_image_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測音檔是哪首歌？(並將其打在訊息框)")
         elif data == 'Top':
             game_states[user_id] = {
                 "game": "Top",

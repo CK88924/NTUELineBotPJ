@@ -4,11 +4,13 @@ Created on Mon Dec 30 19:02:27 2024
 
 @author: user
 """
+import logging 
 import requests
-import urllib.parse
 import datetime
+import io
 from mutagen.mp3 import MP3
-from io import BytesIO
+
+
 class RPSGame:
     RPS_MAP = {
         "剪刀": {"beats": "布", "image_url": "static/rps/scissors.png"},
@@ -23,21 +25,30 @@ class RPSGame:
             return "你贏了！"
         else:
             return "你輸了！"
-        
-def download_blob_as_bytes(bucket, blob_name):
-    encoded_blob_name = urllib.parse.quote(blob_name, safe='')
-    blob = bucket.blob(encoded_blob_name)
-    return blob.download_as_bytes()
 
-def calculate_audio_duration_from_firebase(bucket, blob_name):
+def get_audio_duration(url):
+    """
+    計算遠程音頻文件的時長（毫秒）。
+
+    :param url: 音頻文件的 URL
+    :return: 時長（毫秒）
+    """
     try:
-        audio_bytes = download_blob_as_bytes(bucket, blob_name)
-        file_stream = BytesIO(audio_bytes)
-        audio = MP3(file_stream)
-        return int(audio.info.length * 1000)  # 秒轉毫秒
+        # 發送 GET 請求下載音頻文件到內存
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        
+        # 使用 mutagen.mp3 解析音頻文件元數據
+        audio = MP3(io.BytesIO(response.content))
+        if audio and audio.info:
+            duration_seconds = audio.info.length
+            return int(duration_seconds * 1000)  # 轉換為毫秒
+        else:
+            raise ValueError("無法獲取音頻文件時長信息")
     except Exception as e:
-        print(f"Error calculating audio duration: {e}")
-        return 0
+        logging.error(f"無法計算音頻時長：{e}")
+        return 0  # 預設為 0 秒
+
 
 def search_youtube_this_year(api_key, query, max_results=10):
     # 定義今年的時間範圍
