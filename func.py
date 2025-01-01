@@ -47,7 +47,7 @@ def get_audio_duration(url):
             raise ValueError("無法獲取音頻文件時長信息")
     except Exception as e:
         logging.error(f"無法計算音頻時長：{e}")
-        return 0  # 預設為 0 秒
+        return 10000  # 預設為 10 秒
 
 
 def search_youtube_this_year(api_key, query, max_results=10):
