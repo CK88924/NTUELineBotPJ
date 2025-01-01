@@ -262,7 +262,7 @@ def handle_text_message(event):
                     
                     TextMessage(text=result)
                 ]
-                
+                del game_states[user_id]
                 line_bot_api.reply_message(
                     ReplyMessageRequest(
                         reply_token=event.reply_token,
@@ -338,14 +338,13 @@ def handle_postback(event):
                                     label="剪刀",
                                     text="剪刀"
                                 ),
-                                image_url= os.getenv("scissors")
                             ),
                             QuickReplyItem(
                                 action=MessageAction(
                                     label="石頭",
                                     text="石頭"
                                 ),
-                                image_url= os.getenv("rock")
+                               
 
                             ),
                             QuickReplyItem(
@@ -353,7 +352,7 @@ def handle_postback(event):
                                     label="布",
                                     text="布"
                                 ),
-                                image_url= os.getenv("parper")
+                               
 
                             )
                         ]
