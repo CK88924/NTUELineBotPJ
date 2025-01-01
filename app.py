@@ -262,10 +262,7 @@ def handle_text_message(event):
                     
                     TextMessage(text=result)
                 ]
-
-                # 刪除遊戲狀態，表示遊戲結束
-                del game_states[user_id]
-
+                
                 line_bot_api.reply_message(
                     ReplyMessageRequest(
                         reply_token=event.reply_token,
