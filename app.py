@@ -168,17 +168,14 @@ def handle_image_guess_game(event, line_bot_api, prefix, game_type, question_tex
                 messages=replys
             )
         )
-
+        
 def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_text):
     bucket = db.init_firebase_storage()
     try:
-        # 列出音樂文件名稱
         blob_names = db.list_blob_names(bucket, prefix)
         signed_urls_map = db.generate_signed_urls(bucket, blob_names)
-        
-        # 如果沒有可用音樂文件
         if not signed_urls_map:
-            replys = [TextMessage(text="目前沒有可用的音樂，請稍後再試！")]
+            replys = [TextMessage(text="目前沒有可用的音檔，請稍後再試！")]
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
@@ -187,20 +184,14 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
             )
             return
 
-        # 隨機選擇一個音樂文件
         correct_answer, url = rand.choice(list(signed_urls_map.items()))
-        duration = 10000
-        
-        # 儲存遊戲狀態
         game_states[event.source.user_id] = {
             "game": game_type,
             "attempts": 0,
             "answer": correct_answer
         }
-
-        # 傳送音樂與問題
         replys = [
-            AudioMessage(original_content_url=url, duration=duration),
+            AudioMessage(original_content_url=url, duration=10000),
             TextMessage(text=question_text)
         ]
         line_bot_api.reply_message(
@@ -361,8 +352,6 @@ def handle_postback(event):
             handle_image_guess_game(event, line_bot_api, "劇名圖片/", "Drama", "請猜測圖片是哪部劇？(並將其打在訊息框)")
         elif data == 'Role':
             handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
-        elif data == 'Music':
-            handle_music_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測音檔是哪首歌？(並將其打在訊息框)")
         elif data == 'Top':
             game_states[user_id] = {
                 "game": "Top",
@@ -375,8 +364,7 @@ def handle_postback(event):
                     messages=replys
                 )
             )
-        
-        elif data == 'Game': 
+        elif data == 'Game':
             game_states[user_id] = {
                 "game": "Rps"
             }
@@ -392,7 +380,6 @@ def handle_postback(event):
                                     text="剪刀"
                                 ),
                                 image_url=get_secure_url(base_url, "static/rps/scissors.png")
-
                             ),
                             QuickReplyItem(
                                 action=MessageAction(
@@ -405,25 +392,31 @@ def handle_postback(event):
                                 action=MessageAction(
                                     label="布",
                                     text="布"
-                                ), 
+                                ),
                                 image_url=get_secure_url(base_url, "static/rps/paper.png")
-                               
-
                             )
                         ]
                     )
                 )
             ]
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
+            )
+        elif data == 'Music':
+            handle_music_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測播放的音樂名稱？(並將答案打在訊息框)")
         else:
             logging.error(f"Unknown postback data: {data}")
             replys = [TextMessage(text="未知的請求類型，請稍後再試！")]
-        
-        line_bot_api.reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=replys
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=replys
+                )
             )
-        )
+
 
 if __name__ == "__main__":
     logging.basicConfig(
