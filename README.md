@@ -62,3 +62,6 @@ Bot 將展示動漫角色的一部分（例如眼睛、手或發型），用戶�
 ## 注意事項
 1. 猜謎用音檔請以.mp3上傳因其需依賴mutagen package為避免程式讀取出錯統一格式
 ---
+## 成果展示
+[LineBotPJ](https://youtu.be/7aW5PBxl5vU)
+---
