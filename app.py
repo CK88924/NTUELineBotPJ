@@ -30,6 +30,8 @@ from linebot.v3.messaging import (
     AudioMessage,
     ImageMessage,
     TemplateMessage,
+    ImageCarouselTemplate,
+    ImageCarouselColumn,
     MessageAction,
     QuickReply,
     QuickReplyItem,
@@ -210,6 +212,75 @@ def handle_music_guess_game(event, line_bot_api, prefix, game_type, question_tex
             )
         )
 
+def handle_group_image_guess_game(event, line_bot_api, prefix, game_type, question_text):
+    """
+    使用 ImageCarouselTemplate 處理分組圖片猜謎遊戲邏輯。
+    """
+    bucket = db.init_firebase_storage()
+    try:
+        # 獲取 Blob 名稱並生成簽名 URL 與分組
+        blob_names = db.list_blob_names(bucket, prefix)
+        if not blob_names:
+            raise ValueError("目前沒有可用的圖片檔案！")
+
+        # 使用 generate_signed_urls_with_groups 生成分組數據
+        game_data = db.generate_signed_urls_with_groups(bucket, blob_names)
+        if not game_data or not game_data.get("columns"):
+            raise ValueError("生成遊戲數據失敗，沒有有效的圖片分組！")
+
+        # 生成 ImageCarouselColumn 的模板，最多允許 10 列
+        carousel_columns = [
+            ImageCarouselColumn(
+                image_url=column["imageUrl"],
+                action=MessageAction(
+                    label=column["action"]["label"],
+                    text=column["action"]["text"]
+                )
+            )
+            for column in game_data["columns"][:10]  # 限制最多 10 列
+        ]
+
+        # 生成 ImageCarouselTemplate
+        image_carousel_template = ImageCarouselTemplate(columns=carousel_columns)
+
+        # 包裝為 TemplateMessage
+        template_message = TemplateMessage(
+            alt_text="請猜測圖片答案！",
+            template=image_carousel_template
+        )
+
+        # 記錄遊戲狀態
+        game_states[event.source.user_id] = {
+            "game": game_type,
+            "attempts": 0,
+            "answer": game_data["group_name"]  # 分組名稱作為正確答案
+        }
+
+        # 發送回應
+        reply_request = ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[template_message]
+        )
+        line_bot_api.reply_message(reply_request)
+
+    except ValueError as ve:
+        # 處理值錯誤的特殊情況
+        logging.error(f"處理 {game_type} 遊戲過程中發生錯誤：{ve}")
+        reply_request = ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text=str(ve))]
+        )
+        line_bot_api.reply_message(reply_request)
+
+    except Exception as e:
+        # 捕獲其他未預期的錯誤
+        logging.error(f"處理 {game_type} 遊戲過程中發生未知錯誤：{e}")
+        reply_request = ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text="發生未知錯誤，請稍後再試！")]
+        )
+        line_bot_api.reply_message(reply_request)
+
 def get_secure_url(base_url, path):
     """生成 HTTPS 安全 URL"""
     full_url = base_url.rstrip("/") + "/" + path.lstrip("/")
@@ -355,7 +426,7 @@ def handle_postback(event):
         if data == 'Drama':
             handle_image_guess_game(event, line_bot_api, "劇名圖片/", "Drama", "請猜測圖片是哪部劇？(並將其打在訊息框)")
         elif data == 'Role':
-            handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪個角色？(並將其打在訊息框)")
+            handle_image_guess_game(event, line_bot_api, "角色圖片/", "Role", "請猜測圖片是哪位角色？(並將其打在訊息框)")
         elif data == 'Top':
             game_states[user_id] = {
                 "game": "Top",
@@ -411,6 +482,8 @@ def handle_postback(event):
             )
         elif data == 'Music':
             handle_music_guess_game(event, line_bot_api, "音檔/", "Music", "請猜測播放的音樂名稱？(並將答案打在訊息框)")
+        elif data =='Part':
+            handle_group_image_guess_game(event, line_bot_api, "三階段猜圖/", 'Part', "請猜測是哪位角色的部位？(並將答案打在訊息框)")
         else:
             logging.error(f"Unknown postback data: {data}")
             replys = [TextMessage(text="未知的請求類型，請稍後再試！")]

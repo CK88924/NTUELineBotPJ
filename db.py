@@ -9,6 +9,7 @@ import os
 import logging
 import base64
 import json
+import random as rand
 from firebase_admin import credentials, initialize_app, storage
 
 firebase_app = None
@@ -105,3 +106,59 @@ def generate_signed_urls(bucket, blob_names: list, expiration: int = 3600) -> di
     except Exception as e:
         logging.error(f"批量生成簽名 URL 失敗：{e}")
         raise RuntimeError(f"批量生成簽名 URL 失敗：{e}")
+        
+def generate_signed_urls_with_groups(bucket, blob_names: list, expiration: int = 3600):
+    """
+    為指定的 Blob 名稱列表生成簽名 URL，並分組圖片作為遊戲答案。
+    """
+    try:
+        # 分組容器
+        grouped_urls = {}
+        
+        for blob_name in blob_names:
+            base_name = blob_name.split('/')[-1].rsplit('.', 1)[0]
+            
+            if not base_name:
+                logging.warning(f"Blob {blob_name} 名稱為空或無效，跳過。")
+                continue
+            
+            try:
+                signed_url = get_signed_url(bucket, blob_name, expiration)
+                
+                # 分組邏輯，使用 "-" 前部分作為組名
+                if '-' in base_name:
+                    group_key = base_name.split('-', 1)[0]  # "六尾" 或 "沼王"
+                else:
+                    group_key = base_name  # 單圖情況
+                
+                if group_key not in grouped_urls:
+                    grouped_urls[group_key] = []
+                
+                grouped_urls[group_key].append(signed_url)
+            except Exception as e:
+                logging.warning(f"生成 {blob_name} 的簽名 URL 失敗，跳過。原因：{e}")
+        
+        # 隨機選擇一組作為答案
+        if not grouped_urls:
+            raise ValueError("沒有有效的圖片組可用！")
+        
+        selected_group = rand.choice(list(grouped_urls.items()))  # 隨機選擇一組
+        group_name, urls = selected_group
+        
+        # 生成 ImageCarouselColumn 模板
+        columns = []
+        for url in urls:
+            columns.append({
+                "imageUrl": url,
+                "action": {
+                    "type": "message",
+                    "label": "猜答案",
+                    "text": group_name  # 直接使用分組名稱作為答案
+                }
+            })
+        
+        return {"group_name": group_name, "columns": columns}
+    
+    except Exception as e:
+        logging.error(f"批量生成簽名 URL 並分組失敗：{e}")
+        raise RuntimeError(f"批量生成簽名 URL 並分組失敗：{e}")
