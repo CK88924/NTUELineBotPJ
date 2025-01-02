@@ -62,11 +62,14 @@ def create_rich_menu():
         line_bot_api = MessagingApi(api_client)
         line_bot_blob_api = MessagingApiBlob(api_client)
 
-        # 刪除所有現有的圖文選單
-        rich_menus = line_bot_api.get_rich_menus()
-        for menu in rich_menus.richmenus:
-            line_bot_api.delete_rich_menu(menu.rich_menu_id)
-            print(f"Deleted rich menu: {menu.rich_menu_id}")
+        # Delete all existing rich menus
+        try:
+            rich_menus = line_bot_api.get_rich_menu_list()
+            for menu in rich_menus:
+                line_bot_api.delete_rich_menu(menu.rich_menu_id)
+                print(f"Deleted rich menu: {menu.rich_menu_id}")
+        except Exception as e:
+            print(f"Error fetching or deleting rich menus: {e}")
 
         # Create rich menu
         headers = {
@@ -96,17 +99,21 @@ def create_rich_menu():
 
         response = requests.post('https://api.line.me/v2/bot/richmenu', headers=headers, data=json.dumps(body).encode('utf-8'))
         response = response.json()
-        rich_menu_id = response["richMenuId"]
+        rich_menu_id = response.get("richMenuId")
 
-        # Upload rich menu image
-        with open('static/newrichmenu.jpg', 'rb') as image:
-            line_bot_blob_api.set_rich_menu_image(
-                rich_menu_id=rich_menu_id,
-                body=bytearray(image.read()),
-                _headers={'Content-Type': 'image/jpeg'}
-            )
+        if rich_menu_id:
+            # Upload rich menu image
+            with open('static/newrichmenu.jpg', 'rb') as image:
+                line_bot_blob_api.set_rich_menu_image(
+                    rich_menu_id=rich_menu_id,
+                    body=bytearray(image.read()),
+                    _headers={'Content-Type': 'image/jpeg'}
+                )
 
-        line_bot_api.set_default_rich_menu(rich_menu_id)
+            # Set default rich menu
+            line_bot_api.set_default_rich_menu(rich_menu_id)
+        else:
+            print("Error creating rich menu:", response)
 
 create_rich_menu()
 
