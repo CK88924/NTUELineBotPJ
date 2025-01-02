@@ -216,9 +216,11 @@ def handle_group_image_guess_game(event, line_bot_api, prefix, game_type, questi
     """
     使用 ImageCarouselTemplate 處理分組圖片猜謎遊戲邏輯。
     """
-    bucket = db.init_firebase_storage()
     try:
-        # 獲取 Blob 名稱列表
+        # 初始化 Firebase Storage Bucket
+        bucket = db.init_firebase_storage()
+
+        # 獲取 Blob 名稱並生成簽名 URL 與分組
         blob_names = db.list_blob_names(bucket, prefix)
         if not blob_names:
             raise ValueError("目前沒有可用的圖片檔案！")
@@ -228,16 +230,16 @@ def handle_group_image_guess_game(event, line_bot_api, prefix, game_type, questi
         if not game_data or not game_data.get("columns"):
             raise ValueError("生成遊戲數據失敗，沒有有效的圖片分組！")
 
-        # 生成 ImageCarouselColumn 的模板
+        # 生成 ImageCarouselColumn 的模板，限制最多顯示 10 張圖片
         carousel_columns = [
             ImageCarouselColumn(
                 image_url=column["imageUrl"],
                 action=MessageAction(
-                    label=column["action"]["label"],
-                    text=column["action"]["text"]
+                    label=f"選擇圖片 {i+1}",
+                    text=f"選擇圖片 {i+1}"  # 點擊後的訊息不暴露答案
                 )
             )
-            for column in game_data["columns"][:10]  # 限制最多 10 列
+            for i, column in enumerate(game_data["columns"][:10])  # 限制最多顯示 10 列
         ]
 
         # 生成 ImageCarouselTemplate
@@ -253,7 +255,8 @@ def handle_group_image_guess_game(event, line_bot_api, prefix, game_type, questi
         game_states[event.source.user_id] = {
             "game": game_type,
             "attempts": 0,
-            "answer": game_data["group_name"]  # 分組名稱作為正確答案
+            "answer": game_data["group_name"],  # 分組名稱作為正確答案
+            "options": [f"選擇圖片 {i+1}" for i in range(len(game_data["columns"][:10]))]  # 記錄選項
         }
 
         # 發送回應
