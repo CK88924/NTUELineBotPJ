@@ -218,7 +218,7 @@ def handle_group_image_guess_game(event, line_bot_api, prefix, game_type, questi
     """
     bucket = db.init_firebase_storage()
     try:
-        # 獲取 Blob 名稱並生成簽名 URL 與分組
+        # 獲取 Blob 名稱列表
         blob_names = db.list_blob_names(bucket, prefix)
         if not blob_names:
             raise ValueError("目前沒有可用的圖片檔案！")
@@ -228,7 +228,7 @@ def handle_group_image_guess_game(event, line_bot_api, prefix, game_type, questi
         if not game_data or not game_data.get("columns"):
             raise ValueError("生成遊戲數據失敗，沒有有效的圖片分組！")
 
-        # 生成 ImageCarouselColumn 的模板，最多允許 10 列
+        # 生成 ImageCarouselColumn 的模板
         carousel_columns = [
             ImageCarouselColumn(
                 image_url=column["imageUrl"],
@@ -280,6 +280,7 @@ def handle_group_image_guess_game(event, line_bot_api, prefix, game_type, questi
             messages=[TextMessage(text="發生未知錯誤，請稍後再試！")]
         )
         line_bot_api.reply_message(reply_request)
+
 
 def get_secure_url(base_url, path):
     """生成 HTTPS 安全 URL"""

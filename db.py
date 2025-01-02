@@ -112,53 +112,61 @@ def generate_signed_urls_with_groups(bucket, blob_names: list, expiration: int =
     為指定的 Blob 名稱列表生成簽名 URL，並分組圖片作為遊戲答案。
     """
     try:
+        if not blob_names:
+            raise ValueError("Blob 名稱列表為空，無法生成簽名 URL。")
+
         # 分組容器
         grouped_urls = {}
-        
+
         for blob_name in blob_names:
-            base_name = blob_name.split('/')[-1].rsplit('.', 1)[0]
-            
-            if not base_name:
-                logging.warning(f"Blob {blob_name} 名稱為空或無效，跳過。")
+            if not blob_name:
+                logging.warning("Blob 名稱無效或為空，跳過。")
                 continue
-            
+
+            base_name = blob_name.split('/')[-1].rsplit('.', 1)[0]
+            if not base_name:
+                logging.warning(f"Blob {blob_name} 名稱提取後為空，跳過。")
+                continue
+
             try:
                 signed_url = get_signed_url(bucket, blob_name, expiration)
                 
                 # 分組邏輯，使用 "-" 前部分作為組名
-                if '-' in base_name:
-                    group_key = base_name.split('-', 1)[0]  # "六尾" 或 "沼王"
-                else:
-                    group_key = base_name  # 單圖情況
+                group_key = base_name.split('-', 1)[0] if '-' in base_name else base_name
                 
+                # 初始化分組
                 if group_key not in grouped_urls:
                     grouped_urls[group_key] = []
-                
+
                 grouped_urls[group_key].append(signed_url)
+
             except Exception as e:
                 logging.warning(f"生成 {blob_name} 的簽名 URL 失敗，跳過。原因：{e}")
-        
-        # 隨機選擇一組作為答案
+
+        # 檢查分組結果
         if not grouped_urls:
             raise ValueError("沒有有效的圖片組可用！")
-        
-        selected_group = rand.choice(list(grouped_urls.items()))  # 隨機選擇一組
+
+        # 隨機選擇一組作為答案
+        selected_group = rand.choice(list(grouped_urls.items()))
         group_name, urls = selected_group
-        
-        # 生成 ImageCarouselColumn 模板
-        columns = []
-        for url in urls:
-            columns.append({
+
+        # 生成模板所需數據結構
+        columns = [
+            {
                 "imageUrl": url,
                 "action": {
                     "type": "message",
                     "label": "猜答案",
-                    "text": group_name  # 直接使用分組名稱作為答案
+                    "text": group_name
                 }
-            })
-        
+            }
+            for url in urls
+        ]
+
         return {"group_name": group_name, "columns": columns}
-    
+
     except Exception as e:
         logging.error(f"批量生成簽名 URL 並分組失敗：{e}")
-        raise RuntimeError(f"批量生成簽名 URL 並分組失敗：{e}")
+        raise RuntimeError("批量生成簽名 URL 並分組失敗。")
+
