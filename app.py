@@ -334,7 +334,11 @@ def handle_text_message(event):
 def handle_postback(event):
     data = event.postback.data
     user_id = event.source.user_id
-
+    
+    # Logging current game state and postback data
+    logging.info(f"Current game_states: {game_states}")
+    logging.info(f"Postback data: {data}, user_id: {user_id}")
+    
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
 
