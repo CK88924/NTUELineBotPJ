@@ -62,6 +62,12 @@ def create_rich_menu():
         line_bot_api = MessagingApi(api_client)
         line_bot_blob_api = MessagingApiBlob(api_client)
 
+        # 刪除所有現有的圖文選單
+        rich_menus = line_bot_api.get_rich_menus()
+        for menu in rich_menus.richmenus:
+            line_bot_api.delete_rich_menu(menu.rich_menu_id)
+            print(f"Deleted rich menu: {menu.rich_menu_id}")
+
         # Create rich menu
         headers = {
             'Authorization': 'Bearer ' + os.getenv('CHANNEL_ACCESS_TOKEN'),
@@ -74,15 +80,15 @@ def create_rich_menu():
             "chatBarText": "快捷指令",
             "areas": [
                 {"bounds": {"x": 0, "y": 0, "width": 833, "height": 843},
-                 "action": {"type": "postback", "data": "Drama", "displayText": "劇名"}},
+                 "action": {"type": "postback", "data": "Drama", "displayText": "動漫劇名"}},
                 {"bounds": {"x": 834, "y": 0, "width": 833, "height": 843},
-                 "action": {"type": "postback", "data": "Role", "displayText": "角色"}},
+                 "action": {"type": "postback", "data": "Role", "displayText": "動漫角色"}},
                 {"bounds": {"x": 1663, "y": 0, "width": 834, "height": 843},
-                 "action": {"type": "postback", "data": "Music", "displayText": "音樂"}},
+                 "action": {"type": "postback", "data": "Music", "displayText": "動漫音樂"}},
                 {"bounds": {"x": 0, "y": 843, "width": 833, "height": 843},
-                 "action": {"type": "postback", "data": "Game", "displayText": "小遊戲"}},
+                 "action": {"type": "postback", "data": "Game", "displayText": "動漫小遊戲"}},
                 {"bounds": {"x": 834, "y": 843, "width": 833, "height": 843},
-                 "action": {"type": "postback", "data": "Part", "displayText": "角色部位"}},
+                 "action": {"type": "postback", "data": "Part", "displayText": "角色猜猜看"}},
                 {"bounds": {"x": 1662, "y": 843, "width": 838, "height": 843},
                  "action": {"type": "postback", "data": "Top", "displayText": "十大音樂"}}
             ]
@@ -93,7 +99,7 @@ def create_rich_menu():
         rich_menu_id = response["richMenuId"]
 
         # Upload rich menu image
-        with open('static/richmenu.jpg', 'rb') as image:
+        with open('static/newrichmenu.jpg', 'rb') as image:
             line_bot_blob_api.set_rich_menu_image(
                 rich_menu_id=rich_menu_id,
                 body=bytearray(image.read()),
