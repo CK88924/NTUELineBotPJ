@@ -29,6 +29,7 @@ from linebot.v3.messaging import (
     TextMessage,
     AudioMessage,
     ImageMessage,
+    StickerMessage,
     TemplateMessage,
     ImageCarouselTemplate,
     ImageCarouselColumn,
@@ -41,6 +42,7 @@ from linebot.v3.webhooks import (
     MessageEvent,
     TextMessageContent,
     PostbackEvent,
+    FollowEvent
 )
 
 app = Flask(__name__)
@@ -318,6 +320,39 @@ def callback():
         abort(400)
 
     return 'OK'
+
+# 處理 follow 事件（用戶加為好友）
+@line_handler.add(FollowEvent)
+def handle_follow(event):
+    welcome_message = welcome_message = """
+🎉 歡迎來到動漫世界 LINE 官方帳號！ 🎉 這裡是專屬於動漫迷的夢幻天地！🌟 加入我們，您將可以探索：
+
+🌸 動漫劇名猜猜看：測試您的動漫劇名記憶力！
+✨ 動漫角色探索：尋找您心中的最佳角色靈魂伴侶。
+🎵 動漫音樂聆聽：重溫那些讓人熱血沸騰的經典旋律。
+🎮 動漫小遊戲挑戰：趣味互動，解鎖隱藏彩蛋！
+❓ 角色猜猜看：和好友一起挑戰動漫角色知識！
+🏆 Top10 動漫金曲排名：一起票選出屬於我們的動漫音樂排行榜！
+
+立即點擊加入，讓我們一起進入 動漫的奇幻世界！✨
+動起手指，動漫世界由你主宰！ 🎊
+
+快來和我們一起探索動漫的無限可能吧！✨
+🎉 追蹤我們，讓動漫成為你生活的一部分！
+"""
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        # 歡迎訊息的貼圖 (貼圖包 ID 和貼圖 ID)
+        sticker_message = StickerMessage(
+            package_id='789',  # 貼圖包 ID
+            sticker_id='10869'  # 貼圖 ID
+        )
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[welcome_message,sticker_message]
+            )
+        )
 
 @line_handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
