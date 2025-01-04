@@ -324,7 +324,9 @@ def callback():
 # 處理 follow 事件（用戶加為好友）
 @line_handler.add(FollowEvent)
 def handle_follow(event):
-    welcome_message = welcome_message = """
+    # 歡迎訊息
+    welcome_message = TextMessage(
+        text="""
 🎉 歡迎來到動漫世界 LINE 官方帳號！ 🎉 這裡是專屬於動漫迷的夢幻天地！🌟 加入我們，您將可以探索：
 
 🌸 動漫劇名猜猜看：測試您的動漫劇名記憶力！
@@ -340,17 +342,21 @@ def handle_follow(event):
 快來和我們一起探索動漫的無限可能吧！✨
 🎉 追蹤我們，讓動漫成為你生活的一部分！
 """
+    )
+
+    # 歡迎訊息的貼圖 (貼圖包 ID 和貼圖 ID)
+    sticker_message = StickerMessage(
+        package_id='789',  # 貼圖包 ID
+        sticker_id='10869'  # 貼圖 ID
+    )
+
+    # 使用 ApiClient 發送回覆訊息
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
-        # 歡迎訊息的貼圖 (貼圖包 ID 和貼圖 ID)
-        sticker_message = StickerMessage(
-            package_id='789',  # 貼圖包 ID
-            sticker_id='10869'  # 貼圖 ID
-        )
         line_bot_api.reply_message(
             ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[welcome_message,sticker_message]
+                reply_token=event.reply_token,
+                messages=[welcome_message, sticker_message]
             )
         )
 
